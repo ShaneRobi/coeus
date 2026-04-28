@@ -14,17 +14,6 @@
   --accent: #1a1a18;
 }
 
-:root.theme-dark {
-  --bg-base: #232321;
-  --bg-card: #2E2D29;
-  --bg-input: #383630;
-  --text-primary: #F5F4F0;
-  --text-secondary: #D4D2CA;
-  --text-muted: #B4B2A9;
-  --border: #4A4943;
-  --border-hover: #6D6B62;
-  --accent: #F5F4F0;
-}
 
 * {
   box-sizing: border-box;

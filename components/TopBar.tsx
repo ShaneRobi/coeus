@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import ThemeToggle from './ThemeToggle'
 
 function initialsFromEmail(email?: string | null) {
   if (!email) return 'U'
@@ -36,7 +35,6 @@ export default function TopBar() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <ThemeToggle />
           {!loading && email ? (
             <Link
               href="/profile/me"
