@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
 
 const supabase = createClient(
-  'https://anbkhizdpgtyjpjbokeu.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFuYmtoaXpkcGd0eWpwamJva2V1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzM3MTIyMiwiZXhwIjoyMDkyOTQ3MjIyfQ.nMMrcUpyWEPghIfwyyrZSRRrxbdBngOTaYQHPOF96qE',
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { autoRefreshToken: false, persistSession: false } }
 )
 
