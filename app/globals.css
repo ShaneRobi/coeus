@@ -3,6 +3,18 @@
 @tailwind utilities;
 
 :root {
+  --bg-base: #111110;
+  --bg-card: #1a1a18;
+  --bg-input: #232321;
+  --text-primary: #e8e6e1;
+  --text-secondary: #a8a69f;
+  --text-muted: #6b6965;
+  --border: #2a2a28;
+  --border-hover: #3d3d3a;
+  --accent: #e8e6e1;
+}
+
+:root.theme-light {
   --bg-base: #F5F4F0;
   --bg-card: #ECEAE4;
   --bg-input: #E5E3DC;

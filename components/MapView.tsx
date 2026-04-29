@@ -28,7 +28,7 @@ export default function MapView() {
 
   useEffect(() => {
     const root = document.documentElement
-    const updateTheme = () => setDarkMode(root.classList.contains('theme-dark'))
+    const updateTheme = () => setDarkMode(!root.classList.contains('theme-light'))
     updateTheme()
 
     const observer = new MutationObserver(updateTheme)

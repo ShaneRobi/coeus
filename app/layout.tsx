@@ -13,8 +13,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="bg-bg-base text-text-primary min-h-screen">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('coeus-theme')==='light')document.documentElement.classList.add('theme-light')}catch(e){}`,
+          }}
+        />
         <TopBar />
         <div className="pt-[53px]">
           {children}
