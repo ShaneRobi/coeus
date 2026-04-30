@@ -135,7 +135,10 @@ function LoginContent() {
 
     if (signUpError) {
       setLoading(false)
-      setError(signUpError.message)
+      const isEmailError = signUpError.message.toLowerCase().includes('email')
+      setError(isEmailError
+        ? 'We had trouble sending your confirmation email. Please try again or contact support.'
+        : signUpError.message)
       return
     }
 
