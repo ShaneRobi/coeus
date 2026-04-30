@@ -118,7 +118,13 @@ function LoginContent() {
     }
 
     setLoading(true)
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    })
 
     if (signUpError) {
       setLoading(false)
@@ -126,17 +132,31 @@ function LoginContent() {
       return
     }
 
+    // Supabase returns a fake user with empty identities when the email already exists
+    if (data.user && data.user.identities?.length === 0) {
+      setLoading(false)
+      setError('An account with this email already exists. Please sign in.')
+      return
+    }
+
     if (data.user) {
       await supabase.from('profiles').insert({
         id: data.user.id,
         display_name: email.split('@')[0],
-        bio: school ? school : null,
+        bio: school || null,
         interests: [],
         is_admin: false,
       })
     }
 
     setLoading(false)
+
+    // If a session is returned immediately, email confirmation is disabled — go straight in
+    if (data.session) {
+      window.location.href = '/'
+      return
+    }
+
     setMessage('Check your email to confirm your account')
   }
 
