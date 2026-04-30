@@ -139,14 +139,25 @@ function LoginContent() {
       return
     }
 
+    // Create the profile server-side using the service role key.
+    // The anon client cannot insert when email confirmation is pending because
+    // there is no active session yet, so auth.uid() is null and the RLS policy fails.
     if (data.user) {
-      await supabase.from('profiles').insert({
-        id: data.user.id,
-        display_name: email.split('@')[0],
-        bio: school || null,
-        interests: [],
-        is_admin: false,
+      const res = await fetch('/api/auth/create-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: data.user.id,
+          displayName: email.split('@')[0],
+          school: school || null,
+        }),
       })
+
+      if (!res.ok) {
+        setLoading(false)
+        setError('Account created but profile setup failed. Please contact support.')
+        return
+      }
     }
 
     setLoading(false)
