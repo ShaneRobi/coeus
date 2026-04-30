@@ -73,6 +73,7 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [school, setSchool] = useState('')
+  const [customSchool, setCustomSchool] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -117,6 +118,12 @@ function LoginContent() {
       return
     }
 
+    const resolvedSchool = school === 'Other' ? customSchool.trim() : school
+    if (!resolvedSchool) {
+      setError('Please select or enter your school.')
+      return
+    }
+
     setLoading(true)
     const { data, error: signUpError } = await supabase.auth.signUp({
       email,
@@ -149,7 +156,7 @@ function LoginContent() {
         body: JSON.stringify({
           userId: data.user.id,
           displayName: email.split('@')[0],
-          school: school || null,
+          school: resolvedSchool,
         }),
       })
 
@@ -268,15 +275,25 @@ function LoginContent() {
             <Field label="Confirm password">
               <input required minLength={8} type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="input" placeholder="Repeat password" />
             </Field>
-            <Field label="School optional">
-              <select value={school} onChange={(e) => setSchool(e.target.value)} className="input">
+            <Field label="School">
+              <select value={school} onChange={(e) => { setSchool(e.target.value); setCustomSchool('') }} className="input">
                 <option value="">Select school</option>
                 {Object.entries(SCHOOLS).map(([group, schools]) => (
                   <optgroup key={group} label={group}>
                     {schools.map((name) => <option key={name} value={name}>{name}</option>)}
                   </optgroup>
                 ))}
+                <option value="Other">Other</option>
               </select>
+              {school === 'Other' && (
+                <input
+                  type="text"
+                  value={customSchool}
+                  onChange={(e) => setCustomSchool(e.target.value)}
+                  className="input mt-2"
+                  placeholder="Enter your school or university"
+                />
+              )}
             </Field>
             <button type="submit" disabled={loading} className="w-full rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-bg-base transition-opacity disabled:opacity-50">
               {loading ? 'Creating account...' : 'Create account'}
