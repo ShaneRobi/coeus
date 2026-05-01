@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     bio: school || null,
     interests: [],
     is_admin: false,
+    role: 'normal_user',
   })
 
   // 23505 = unique_violation (profile already exists — safe to ignore)

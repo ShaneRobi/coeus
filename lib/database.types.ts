@@ -85,6 +85,7 @@ export interface Database {
           bio: string | null
           interests: string[]
           is_admin: boolean
+          role: 'normal_user' | 'admin' | 'super_admin'
           created_at: string
         }
         Insert: {
@@ -94,6 +95,7 @@ export interface Database {
           bio?: string | null
           interests?: string[]
           is_admin?: boolean
+          role?: 'normal_user' | 'admin' | 'super_admin'
           created_at?: string
         }
         Update: {
@@ -103,6 +105,7 @@ export interface Database {
           bio?: string | null
           interests?: string[]
           is_admin?: boolean
+          role?: 'normal_user' | 'admin' | 'super_admin'
         }
         Relationships: []
       }
@@ -165,7 +168,9 @@ export interface Database {
     }
     Views: Record<string, never>
     Functions: Record<string, never>
-    Enums: Record<string, never>
+    Enums: {
+      user_role: 'normal_user' | 'admin' | 'super_admin'
+    }
     CompositeTypes: Record<string, never>
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { UserProfile } from '@/lib/types'
+import { isAdmin, getRoleLabel } from '@/lib/roles'
 import BottomNav from '@/components/BottomNav'
 
 export default function MyProfilePage() {
@@ -71,6 +72,7 @@ export default function MyProfilePage() {
           <div>
             <p className="text-text-primary font-semibold">{profile.display_name}</p>
             {profile.bio && <p className="text-text-secondary text-sm">{profile.bio}</p>}
+            <p className="text-text-secondary text-xs mt-0.5">{getRoleLabel(profile.role)}</p>
           </div>
         </div>
 
@@ -87,7 +89,7 @@ export default function MyProfilePage() {
               <path d="M5 3l4 4-4 4" />
             </svg>
           </a>
-          {profile.is_admin && (
+          {isAdmin(profile.role) && (
             <a href="/admin" className="flex items-center justify-between px-4 py-3 text-sm text-accent hover:opacity-80 transition-opacity">
               <span>Admin panel</span>
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">

@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase'
 import type { UserProfile } from '@/lib/types'
+import { getRoleLabel } from '@/lib/roles'
 
 export default async function AdminUsersPage() {
   const supabase = createServiceClient()
@@ -24,7 +25,7 @@ export default async function AdminUsersPage() {
               <tr className="border-b border-border">
                 <th className="text-left px-4 py-3 text-text-secondary font-normal">Name</th>
                 <th className="text-left px-4 py-3 text-text-secondary font-normal">Joined</th>
-                <th className="text-left px-4 py-3 text-text-secondary font-normal">Admin</th>
+                <th className="text-left px-4 py-3 text-text-secondary font-normal">Role</th>
               </tr>
             </thead>
             <tbody>
@@ -35,7 +36,7 @@ export default async function AdminUsersPage() {
                     {new Date(u.created_at).toLocaleDateString('en-SG')}
                   </td>
                   <td className="px-4 py-3 text-text-secondary">
-                    {u.is_admin ? 'Yes' : 'No'}
+                    {getRoleLabel(u.role)}
                   </td>
                 </tr>
               ))}

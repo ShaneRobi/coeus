@@ -1,3 +1,5 @@
+export type UserRole = 'normal_user' | 'admin' | 'super_admin'
+
 export type EventCategory =
   | 'tech'
   | 'arts'
@@ -54,7 +56,9 @@ export interface UserProfile {
   avatar_url: string | null
   bio: string | null
   interests: EventCategory[]
+  /** @deprecated use role instead */
   is_admin: boolean
+  role: UserRole
   created_at: string
 }
 
