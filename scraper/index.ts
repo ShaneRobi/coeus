@@ -85,6 +85,12 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
   let added = 0
 
   for (const event of raw) {
+    // Scraped events must have a link — skip those without one
+    if (!event.external_url) {
+      console.warn(`[${source}] Skipping event without link: "${event.title}"`)
+      continue
+    }
+
     // Skip if already exists by source + source_id
     if (event.source_id) {
       const { data: existing } = await supabase
