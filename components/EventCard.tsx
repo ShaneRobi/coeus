@@ -1,9 +1,13 @@
+'use client'
+
 import Link from 'next/link'
 import type { Event, EventCategory } from '@/lib/types'
 import { format } from 'date-fns'
 
 interface Props {
   event: Event
+  adminToken?: string
+  onRemove?: () => void
 }
 
 const CATEGORY_STYLES: Record<string, { stroke: string; bg: string; label: string }> = {
@@ -59,14 +63,28 @@ function getCategoryIcon(category: EventCategory) {
   return <svg {...common}><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>
 }
 
-export default function EventCard({ event }: Props) {
+export default function EventCard({ event, adminToken, onRemove }: Props) {
   const start = new Date(event.start_at)
   const style = getCategoryStyle(event.category)
+
+  async function handleRemove(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    await fetch(`/api/events/${event.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({ status: 'rejected' }),
+    })
+    onRemove?.()
+  }
 
   return (
     <Link
       href={`/events/${event.id}`}
-      className="flex gap-3 rounded-xl border-[0.5px] border-border bg-bg-card p-3 transition-colors hover:border-hover"
+      className="group relative flex gap-3 rounded-xl border-[0.5px] border-border bg-bg-card p-3 transition-colors hover:border-hover"
     >
       <div
         className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-xl"
@@ -107,6 +125,18 @@ export default function EventCard({ event }: Props) {
           <p className="mt-1 text-[10px] text-text-muted">via {event.source}</p>
         )}
       </div>
+
+      {onRemove && (
+        <button
+          onClick={handleRemove}
+          title="Remove from discovery"
+          className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full text-text-muted opacity-0 transition-opacity hover:text-[#8F2424] group-hover:opacity-100"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <path d="M1 1l8 8M9 1L1 9" />
+          </svg>
+        </button>
+      )}
     </Link>
   )
 }

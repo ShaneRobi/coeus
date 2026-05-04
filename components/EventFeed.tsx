@@ -4,13 +4,33 @@ import { useEffect, useState, useCallback } from 'react'
 import type { Event } from '@/lib/types'
 import EventCard from './EventCard'
 import { useFilterStore } from '@/lib/store'
+import { supabase } from '@/lib/supabase'
+import { isAdmin } from '@/lib/roles'
+import type { UserRole } from '@/lib/types'
 
 export default function EventFeed() {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [adminToken, setAdminToken] = useState<string | null>(null)
   const filter = useFilterStore()
+
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      if (isAdmin(profile?.role as UserRole)) {
+        setAdminToken(session.access_token)
+      }
+    }
+    checkAdmin()
+  }, [])
 
   const load = useCallback(async (reset = false) => {
     setLoading(true)
@@ -56,10 +76,19 @@ export default function EventFeed() {
     )
   }
 
+  function removeEvent(id: string) {
+    setEvents((prev) => prev.filter((e) => e.id !== id))
+  }
+
   return (
     <div className="space-y-3 mt-4">
       {(events ?? []).map((event) => (
-        <EventCard key={event.id} event={event} />
+        <EventCard
+          key={event.id}
+          event={event}
+          adminToken={adminToken ?? undefined}
+          onRemove={adminToken ? () => removeEvent(event.id) : undefined}
+        />
       ))}
       {hasMore && (
         <button
