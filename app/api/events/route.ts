@@ -15,6 +15,9 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status') ?? 'published'
   query = query.eq('status', status)
 
+  // Scraped events must have a link; user_submission events are exempt
+  query = query.or('external_url.not.is.null,source.eq.user_submission')
+
   const categories = searchParams.get('categories')
   if (categories) {
     query = query.in('category', categories.split(','))
