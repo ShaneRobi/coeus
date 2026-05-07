@@ -11,11 +11,13 @@
     "scrape:all": "npx ts-node --project scripts/tsconfig.json scripts/run-scraper.ts all",
     "scrape:nightly": "npx ts-node --project scripts/tsconfig.json scripts/run-scraper.ts nightly",
     "scrape:cron": "npx ts-node --project scripts/tsconfig.json scripts/cron-scraper.ts",
-    "scrape:cron:now": "npx ts-node --project scripts/tsconfig.json scripts/cron-scraper.ts --run-now"
+    "scrape:cron:now": "npx ts-node --project scripts/tsconfig.json scripts/cron-scraper.ts --run-now",
+    "scrape:telegram": "npx ts-node --project scripts/tsconfig.json scripts/telegram-bot.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
     "axios": "^1.7.0",
+    "chrono-node": "^2.9.1",
     "date-fns": "^3.6.0",
     "firebase": "^10.12.0",
     "ics": "^3.8.1",
@@ -26,6 +28,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-leaflet": "^4.2.1",
+    "telegraf": "^4.16.3",
     "zustand": "^4.5.0"
   },
   "devDependencies": {
