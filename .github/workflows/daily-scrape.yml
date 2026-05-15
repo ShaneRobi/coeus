@@ -1,0 +1,35 @@
+name: Daily Scrape
+
+on:
+  schedule:
+    - cron: '0 15 * * *'  # 11pm SGT daily
+  workflow_dispatch:        # allow manual trigger from GitHub UI
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
+
+      - name: Run nightly scrapers
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEOCODE_API_KEY: ${{ secrets.GEOCODE_API_KEY }}
+          EVENTBRITE_API_KEY: ${{ secrets.EVENTBRITE_API_KEY }}
+          LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
+          EVENTFINDA_USERNAME: ${{ secrets.EVENTFINDA_USERNAME }}
+          EVENTFINDA_PASSWORD: ${{ secrets.EVENTFINDA_PASSWORD }}
+          EVENTFINDA_QUERY: ${{ secrets.EVENTFINDA_QUERY }}
+        run: npm run scrape:nightly
