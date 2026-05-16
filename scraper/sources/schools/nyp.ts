@@ -9,7 +9,7 @@ export class NYPScraper extends BaseScraper {
     const events: ScrapedEvent[] = []
     try {
       const page = await browser.newPage()
-      await page.goto('https://www.nyp.edu.sg/about-nyp/events.html', { waitUntil: 'networkidle', timeout: 20000 })
+      await page.goto('https://www.nyp.edu.sg/about-nyp/events.html', { waitUntil: 'domcontentloaded', timeout: 30000 })
       const items = await page.$$eval('[class*="event"], [class*="Event"], .views-row, article', (els) =>
         els.slice(0, 30).map((el) => ({
           title: el.querySelector('h2, h3, h4, [class*="title"]')?.textContent?.trim() ?? '',
@@ -24,11 +24,12 @@ export class NYPScraper extends BaseScraper {
         events.push({
           title: item.title,
           description: item.description,
-          start_at: this.normalizeDate(item.date || new Date().toISOString()),
+          start_at: this.normalizeDate(item.date),
           location_name: item.venue || 'NYP',
           location_address: item.venue ? `${item.venue}, Nanyang Polytechnic, Singapore` : 'Nanyang Polytechnic, Singapore',
-          external_url: item.url,
+          external_url: item.url || undefined,
           source: this.source,
+          source_id: item.url || undefined,
           is_free: true,
           tags: ['university', 'nyp'],
         })

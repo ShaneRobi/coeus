@@ -77,7 +77,8 @@ export class GovernmentYouthScraper extends BaseScraper {
           if (!item.url.startsWith('https://')) continue
           if (!looksYouthFocused(`${item.title} ${item.url}`)) continue
 
-          const start = dateFromText(item.title) ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+          const start = dateFromText(item.title)
+          if (!start) continue
 
           events.push({
             title: item.title,

@@ -1,3 +1,11 @@
+/**
+ * Self-hosted fallback: runs scrapers on a schedule using node-cron.
+ * Production uses Vercel's built-in cron (vercel.json → /api/cron/scrape).
+ *
+ * Usage:
+ *   npm run scrape:cron          — start the scheduler (keeps process alive)
+ *   npm run scrape:cron:now      — start + run immediately
+ */
 import * as dotenv from 'dotenv'
 import * as path from 'path'
 import cron from 'node-cron'
@@ -19,20 +27,18 @@ async function runNightlyScrape() {
     { found: 0, added: 0 }
   )
 
-  console.log(`[scraper-cron] done - found: ${totals.found}, inserted: ${totals.added}`)
+  console.log(`[scraper-cron] done — found: ${totals.found}, inserted: ${totals.added}`)
 }
 
 console.log(`[scraper-cron] scheduled "${schedule}" in ${timezone}`)
-console.log('[scraper-cron] keep this process running with pm2, launchd, systemd, or a hosting cron worker')
 
 cron.schedule(schedule, () => {
-  runNightlyScrape().catch((err) => {
-    console.error('[scraper-cron] failed:', err)
-  })
+  runNightlyScrape().catch((err) => console.error('[scraper-cron] failed:', err))
 }, { timezone })
 
 if (process.argv.includes('--run-now')) {
   runNightlyScrape().catch((err) => {
     console.error('[scraper-cron] initial run failed:', err)
+    process.exit(1)
   })
 }

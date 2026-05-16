@@ -9,14 +9,16 @@ export class NUSScraper extends BaseScraper {
     const events: ScrapedEvent[] = []
     try {
       const page = await browser.newPage()
-      await page.goto('https://nus.edu.sg/oam/events', { waitUntil: 'networkidle', timeout: 20000 })
-      const items = await page.$$eval('.event-item, .views-row', (els) =>
+      await page.goto('https://nus.edu.sg/cfg/events', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      const items = await page.$$eval('.event-item, .views-row, [class*="event"], article', (els) =>
         els.slice(0, 30).map((el) => ({
-          title: el.querySelector('h3, .title, .event-title')?.textContent?.trim() ?? '',
-          date: el.querySelector('.date, .event-date, time')?.textContent?.trim() ?? '',
-          venue: el.querySelector('.venue, .location')?.textContent?.trim() ?? '',
+          title: el.querySelector('h3, h2, h4, .title, .event-title, [class*="title"]')?.textContent?.trim() ?? '',
+          date: el.querySelector('time, .date, .event-date, [class*="date"], [class*="Date"]')?.getAttribute('datetime')
+            ?? el.querySelector('time, .date, .event-date, [class*="date"], [class*="Date"]')?.textContent?.trim()
+            ?? '',
+          venue: el.querySelector('.venue, .location, [class*="venue"], [class*="location"]')?.textContent?.trim() ?? '',
           url: (el.querySelector('a') as HTMLAnchorElement)?.href ?? '',
-          description: el.querySelector('.description, .summary')?.textContent?.trim() ?? '',
+          description: el.querySelector('.description, .summary, p')?.textContent?.trim() ?? '',
         }))
       )
       for (const item of items) {
@@ -24,11 +26,12 @@ export class NUSScraper extends BaseScraper {
         events.push({
           title: item.title,
           description: item.description,
-          start_at: this.normalizeDate(item.date || new Date().toISOString()),
+          start_at: this.normalizeDate(item.date),
           location_name: item.venue || 'NUS',
           location_address: item.venue ? `${item.venue}, NUS, Singapore` : 'National University of Singapore, Singapore',
-          external_url: item.url,
+          external_url: item.url || undefined,
           source: this.source,
+          source_id: item.url || undefined,
           is_free: true,
           tags: ['university', 'nus'],
         })

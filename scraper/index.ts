@@ -47,6 +47,8 @@ const SCRAPERS = {
   government: new GovernmentYouthScraper(),
 }
 
+// Sources with confirmed working URLs and APIs. School scrapers with 404 URLs
+// are kept in SCRAPERS for manual testing but excluded from the daily run.
 export const NIGHTLY_SOURCES = [
   'eventfinda',
   'eventbrite',
@@ -54,18 +56,11 @@ export const NIGHTLY_SOURCES = [
   'nus',
   'ntu',
   'smu',
-  'sp',
-  'np',
-  'tp',
-  'rp',
-  'nyp',
-  'ite',
-  'sutd',
-  'sit',
-  'suss',
   'sim',
-  'psb',
 ]
+
+// Nominatim rate limit: 1 req/sec. We wait at least this long between calls.
+const GEOCODE_DELAY_MS = 1100
 
 export async function runScraper(source: string): Promise<ScrapeResult> {
   if (source === 'all') {
@@ -82,9 +77,17 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
   const raw = await scraper.scrape()
   const supabase = createServiceClient()
 
-  let added = 0
+  // Drop events with unparseable or past dates
+  const now = new Date()
+  const upcoming = raw.filter((e): e is ScrapedEvent & { start_at: string } => {
+    if (!e.start_at) return false
+    return new Date(e.start_at) >= now
+  })
 
-  for (const event of raw) {
+  let added = 0
+  let lastGeocode = 0
+
+  for (const event of upcoming) {
     // Scraped events must have a link — skip those without one
     if (!event.external_url) {
       console.warn(`[${source}] Skipping event without link: "${event.title}"`)
@@ -102,7 +105,18 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
       if (existing) continue
     }
 
-    const coordinates = await geocodeAddress(event.location_address)
+    // Rate-limit geocoding to respect Nominatim's 1 req/sec policy
+    const genericAddress = !event.location_address || event.location_address.trim() === 'Singapore'
+    let coordinates = null
+    if (!genericAddress) {
+      const elapsed = Date.now() - lastGeocode
+      if (elapsed < GEOCODE_DELAY_MS) {
+        await new Promise(r => setTimeout(r, GEOCODE_DELAY_MS - elapsed))
+      }
+      coordinates = await geocodeAddress(event.location_address)
+      lastGeocode = Date.now()
+    }
+
     const category = inferCategory(event.title, event.description)
     const tags = event.tags.length ? event.tags : extractTags(event.title, event.description)
 

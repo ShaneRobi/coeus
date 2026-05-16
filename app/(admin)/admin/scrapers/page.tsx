@@ -9,12 +9,26 @@ const SOURCES = [
   'government', 'nus', 'ntu', 'smu', 'sp', 'np', 'tp', 'rp', 'nyp', 'ite', 'sutd', 'sit', 'suss', 'sim', 'psb',
 ]
 
+// vercel.json cron: "0 15 * * *" UTC = 11:00 PM SGT
+const CRON_SCHEDULE_UTC = '0 15 * * *'
+const CRON_LABEL = 'Daily at 11:00 PM SGT (3:00 AM UTC)'
+
+function nextCronRun(): Date {
+  const now = new Date()
+  const next = new Date(now)
+  next.setUTCHours(15, 0, 0, 0)
+  if (next <= now) next.setUTCDate(next.getUTCDate() + 1)
+  return next
+}
+
 export default function AdminScrapersPage() {
   const [runs, setRuns] = useState<ScraperRun[]>([])
   const [running, setRunning] = useState<string | null>(null)
+  const [nextRun, setNextRun] = useState<Date | null>(null)
 
   useEffect(() => {
     fetchRuns()
+    setNextRun(nextCronRun())
   }, [])
 
   async function fetchRuns() {
@@ -48,6 +62,27 @@ export default function AdminScrapersPage() {
           </nav>
         </div>
 
+        {/* Automated schedule banner */}
+        <div className="mb-4 rounded-xl border-[0.5px] border-border bg-bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Automated daily scrape</p>
+              <p className="text-xs text-text-secondary mt-0.5">{CRON_LABEL}</p>
+            </div>
+            {nextRun && (
+              <div className="text-right">
+                <p className="text-xs text-text-secondary">Next run</p>
+                <p className="text-sm text-text-primary">
+                  {nextRun.toLocaleString('en-SG', { timeZone: 'Asia/Singapore', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric' })}
+                </p>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-text-secondary mt-2">
+            Cron: <code className="text-text-primary">{CRON_SCHEDULE_UTC}</code> UTC via Vercel &mdash; runs all nightly sources automatically.
+          </p>
+        </div>
+
         <div className="mb-5 rounded-xl border-[0.5px] border-border bg-bg-card p-4 text-sm text-text-secondary">
           Luma requires <code className="text-text-primary">LUMA_API_KEY</code>. Eventfinda requires{' '}
           <code className="text-text-primary">EVENTFINDA_USERNAME</code> and{' '}
@@ -55,6 +90,7 @@ export default function AdminScrapersPage() {
           <code className="text-text-primary">.env.local</code>, restart the dev server, then run the source here.
         </div>
 
+        <h2 className="text-text-secondary text-sm mb-3">Manual run</h2>
         <div className="grid grid-cols-3 gap-3 mb-10">
           {SOURCES.map((source) => (
             <button

@@ -111,7 +111,7 @@ export class LumaScraper extends BaseScraper {
           if (href.includes('/singapore')) continue
           found.add(href.split('?')[0])
         }
-        return Array.from(found).slice(0, 40)
+        return Array.from(found).slice(0, 20)
       })
 
       for (const url of urls) {
