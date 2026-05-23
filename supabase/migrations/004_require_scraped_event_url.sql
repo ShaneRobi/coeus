@@ -11,3 +11,4 @@ alter table public.events
     source = 'user_submission'
     or (external_url is not null and trim(external_url) != '')
   );
+ 
