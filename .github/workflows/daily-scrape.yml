@@ -2,7 +2,9 @@ name: Daily Scrape
 
 on:
   schedule:
-    - cron: '0 15 * * *'  # 11pm SGT daily
+    # Runs every 6 hours, offset by 3h from the Vercel cron (0 */6 * * *)
+    # so one of the two systems always fires within 3h of a potential failure.
+    - cron: '0 3,9,15,21 * * *'
   workflow_dispatch:        # allow manual trigger from GitHub UI
 
 jobs:
@@ -32,4 +34,12 @@ jobs:
           EVENTFINDA_USERNAME: ${{ secrets.EVENTFINDA_USERNAME }}
           EVENTFINDA_PASSWORD: ${{ secrets.EVENTFINDA_PASSWORD }}
           EVENTFINDA_QUERY: ${{ secrets.EVENTFINDA_QUERY }}
+          GITHUB_ACTIONS: 'true'
         run: npm run scrape:nightly
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Nightly scrape failed. Check the scraper_runs table in Supabase for per-source details."
+          echo "Triggered by: ${{ github.event_name }}"
+          echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -3,6 +3,8 @@ import * as chrono from 'chrono-node'
 export interface ScrapeResult {
   found: number
   added: number
+  skipped: number
+  error?: string
 }
 
 export interface ScrapedEvent {

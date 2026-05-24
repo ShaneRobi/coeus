@@ -62,19 +62,38 @@ export const NIGHTLY_SOURCES = [
 // Nominatim rate limit: 1 req/sec. We wait at least this long between calls.
 const GEOCODE_DELAY_MS = 1100
 
+// Per-scraper timeout: kill a hanging scraper after 45s so it cannot block others.
+const SCRAPER_TIMEOUT_MS = 45_000
+
+/**
+ * Races a promise against a timeout. Rejects with a descriptive error if time runs out.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`[${label}] timed out after ${ms / 1000}s`)), ms)
+  )
+  return Promise.race([promise, timeout])
+}
+
 export async function runScraper(source: string): Promise<ScrapeResult> {
   if (source === 'all') {
     const results = await runAllScrapers()
     return Object.values(results).reduce(
-      (total, result) => ({ found: total.found + result.found, added: total.added + result.added }),
-      { found: 0, added: 0 }
+      (total, result) => ({
+        found:   total.found   + result.found,
+        added:   total.added   + result.added,
+        skipped: total.skipped + result.skipped,
+      }),
+      { found: 0, added: 0, skipped: 0 }
     )
   }
 
   const scraper = SCRAPERS[source as keyof typeof SCRAPERS]
   if (!scraper) throw new Error(`Unknown scraper: ${source}`)
 
-  const raw = await scraper.scrape()
+  // Fetch events with a hard timeout so a hung scraper doesn't block the queue.
+  const raw = await withTimeout(scraper.scrape(), SCRAPER_TIMEOUT_MS, source)
+
   const supabase = createServiceClient()
 
   // Drop events with unparseable or past dates
@@ -85,16 +104,19 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
   })
 
   let added = 0
+  let skipped = 0
   let lastGeocode = 0
 
   for (const event of upcoming) {
     // Scraped events must have a link — skip those without one
     if (!event.external_url) {
       console.warn(`[${source}] Skipping event without link: "${event.title}"`)
+      skipped++
       continue
     }
 
-    // Skip if already exists by source + source_id
+    // --- Deduplication ---
+    // Primary: if source_id is present, upsert using the (source, source_id) unique key.
     if (event.source_id) {
       const { data: existing } = await supabase
         .from('events')
@@ -102,7 +124,21 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
         .eq('source', event.source)
         .eq('source_id', event.source_id)
         .single()
-      if (existing) continue
+      if (existing) {
+        skipped++
+        continue
+      }
+    } else {
+      // Fallback: deduplicate by external_url for events that have no source_id.
+      const { data: existing } = await supabase
+        .from('events')
+        .select('id')
+        .eq('external_url', event.external_url)
+        .single()
+      if (existing) {
+        skipped++
+        continue
+      }
     }
 
     // Rate-limit geocoding to respect Nominatim's 1 req/sec policy
@@ -142,10 +178,14 @@ export async function runScraper(source: string): Promise<ScrapeResult> {
       organiser_id: null,
     })
 
-    if (!error) added++
+    if (!error) {
+      added++
+    } else {
+      console.error(`[${source}] DB insert failed for "${event.title}":`, error.message)
+    }
   }
 
-  return { found: raw.length, added }
+  return { found: raw.length, added, skipped }
 }
 
 export async function runAllScrapers(): Promise<Record<string, ScrapeResult>> {
@@ -158,8 +198,10 @@ export async function runScrapers(sources: string[]): Promise<Record<string, Scr
     try {
       results[source] = await runScraper(source)
     } catch (err) {
-      results[source] = { found: 0, added: 0 }
-      console.error(`Scraper ${source} failed:`, err)
+      const message = err instanceof Error ? err.message : String(err)
+      console.error(`Scraper ${source} failed:`, message)
+      // Propagate the error message into the result so callers can surface it.
+      results[source] = { found: 0, added: 0, skipped: 0, error: message }
     }
   }
   return results

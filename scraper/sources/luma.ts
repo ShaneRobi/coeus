@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { chromium } from 'playwright'
 import { BaseScraper, type ScrapedEvent } from '../lib/base'
 
 interface LumaEvent {
@@ -23,6 +22,51 @@ interface LumaEvent {
 interface LumaListEventsResponse {
   entries?: Array<{ event?: LumaEvent } | LumaEvent>
   next_cursor?: string
+}
+
+// Types for the __NEXT_DATA__ SSR payload on lu.ma/singapore
+interface LumaGeoInfo {
+  full_address?: string
+  short_address?: string
+  address?: string
+  sublocality?: string
+  city_state?: string
+  city?: string
+}
+
+interface LumaNextEvent {
+  api_id: string
+  name: string
+  url: string
+  cover_url?: string
+  start_at: string
+  end_at?: string
+  geo_address_info?: LumaGeoInfo
+}
+
+interface LumaNextEntry {
+  api_id: string
+  start_at: string
+  event?: LumaNextEvent
+  ticket_info?: { is_free?: boolean; price?: number | null; max_price?: number | null }
+  hosts?: Array<{ name?: string }>
+}
+
+/** Walk an arbitrary JSON value and collect Luma event-wrapper objects. */
+function collectEntries(obj: unknown, out: LumaNextEntry[], depth = 0): void {
+  if (depth > 10 || !obj || typeof obj !== 'object') return
+  if (Array.isArray(obj)) {
+    for (const item of obj) collectEntries(item, out, depth + 1)
+    return
+  }
+  const record = obj as Record<string, unknown>
+  if (record.api_id && record.start_at && record.event && typeof record.event === 'object') {
+    out.push(record as unknown as LumaNextEntry)
+    return
+  }
+  for (const val of Object.values(record)) {
+    collectEntries(val, out, depth + 1)
+  }
 }
 
 function unwrapEvent(entry: { event?: LumaEvent } | LumaEvent): LumaEvent | undefined {
@@ -93,88 +137,72 @@ export class LumaScraper extends BaseScraper {
     return results
   }
 
+  /**
+   * Scrapes lu.ma/singapore via plain HTTP by reading the __NEXT_DATA__ JSON
+   * that Luma embeds server-side in the page. No Playwright or API key needed —
+   * works on Vercel and in GitHub Actions.
+   */
   private async scrapePublicSingaporePage(): Promise<ScrapedEvent[]> {
-    const browser = await chromium.launch({ headless: true })
-    const events: ScrapedEvent[] = []
+    const res = await axios.get<string>('https://lu.ma/singapore', {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml',
+      },
+      maxRedirects: 5,
+    })
 
+    const html = res.data
+
+    // Extract the __NEXT_DATA__ JSON blob Luma embeds for SSR
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/)
+    if (!nextDataMatch) {
+      console.warn('[luma] __NEXT_DATA__ not found in lu.ma/singapore — page structure may have changed')
+      return []
+    }
+
+    let root: unknown
     try {
-      const page = await browser.newPage()
-      await page.goto('https://luma.com/singapore', { waitUntil: 'domcontentloaded', timeout: 30000 })
+      root = JSON.parse(nextDataMatch[1])
+    } catch {
+      console.warn('[luma] Failed to parse __NEXT_DATA__ JSON')
+      return []
+    }
 
-      const urls = await page.$$eval('a[href]', (links) => {
-        const found = new Set<string>()
-        for (const link of links) {
-          const href = (link as HTMLAnchorElement).href
-          if (!href) continue
-          if (!/^https:\/\/(lu\.ma|luma\.com)\//.test(href)) continue
-          if (/\/(discover|pricing|help|home|signin|login|create|calendar|user)\b/.test(href)) continue
-          if (href.includes('/singapore')) continue
-          found.add(href.split('?')[0])
-        }
-        return Array.from(found).slice(0, 20)
+    // Recursively collect entries that look like Luma event wrappers:
+    // { api_id, start_at, event: { name, url, geo_address_info, ... }, ticket_info, hosts }
+    const entries: LumaNextEntry[] = []
+    collectEntries(root, entries)
+
+    const events: ScrapedEvent[] = []
+    for (const entry of entries) {
+      const ev = entry.event
+      if (!ev?.name || !entry.start_at) continue
+
+      const geo = ev.geo_address_info
+      const address = geo?.full_address ?? geo?.short_address ?? 'Singapore'
+      const locationName = geo?.address ?? geo?.sublocality ?? geo?.city_state ?? 'Singapore'
+
+      const ticketInfo = entry.ticket_info
+      const hostName = entry.hosts?.[0]?.name
+
+      events.push({
+        title: ev.name,
+        description: '',
+        start_at: this.normalizeDate(entry.start_at),
+        end_at: ev.end_at ? this.normalizeDate(ev.end_at) : undefined,
+        location_name: locationName,
+        location_address: address,
+        external_url: `https://lu.ma/${ev.url}`,
+        image_url: ev.cover_url,
+        source: this.source,
+        source_id: entry.api_id,
+        is_free: ticketInfo?.is_free ?? true,
+        price_min: ticketInfo?.price ?? undefined,
+        price_max: ticketInfo?.max_price ?? undefined,
+        tags: ['luma'],
+        organiser_name: hostName,
       })
-
-      for (const url of urls) {
-        try {
-          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 })
-          const item = await page.$$eval('script[type="application/ld+json"]', (scripts) => {
-            for (const script of scripts) {
-              try {
-                const parsed = JSON.parse(script.textContent ?? '{}')
-                const candidates = Array.isArray(parsed) ? parsed : [parsed]
-                const event = candidates.find((entry) => entry?.['@type'] === 'Event')
-                if (event) return event
-              } catch {
-                // Ignore malformed structured data.
-              }
-            }
-            return null
-          })
-
-          if (!item?.name || !item?.startDate) continue
-
-          const location = item.location
-          const locationName =
-            typeof location?.name === 'string'
-              ? location.name
-              : typeof location === 'string'
-                ? location
-                : 'Singapore'
-          const addressValue =
-            typeof location?.address === 'string'
-              ? location.address
-              : location?.address
-                ? [location.address.streetAddress, location.address.addressLocality, location.address.addressCountry].filter(Boolean).join(', ')
-                : `${locationName}, Singapore`
-          const address = addressValue || `${locationName}, Singapore`
-          if (!`${locationName} ${address}`.toLowerCase().includes('singapore')) continue
-
-          const offer = Array.isArray(item.offers) ? item.offers[0] : item.offers
-          const price = offer?.price != null ? Number(offer.price) : undefined
-
-          events.push({
-            title: item.name,
-            description: item.description ?? '',
-            start_at: this.normalizeDate(item.startDate),
-            end_at: item.endDate ? this.normalizeDate(item.endDate) : undefined,
-            location_name: locationName,
-            location_address: address,
-            external_url: item.url ?? url,
-            image_url: Array.isArray(item.image) ? item.image[0] : item.image,
-            source: this.source,
-            source_id: url,
-            is_free: price == null ? true : price === 0,
-            price_min: price,
-            price_max: price,
-            tags: ['luma'],
-            organiser_name: item.organizer?.name,
-          })
-        } catch (err) {
-          console.warn(`Luma event scrape failed for ${url}:`, err)
-        }
-      }
-    } finally {
-      await browser.close()
     }
 
     return events

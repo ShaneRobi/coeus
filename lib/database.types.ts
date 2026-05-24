@@ -140,8 +140,12 @@ export interface Database {
           finished_at: string | null
           events_found: number
           events_added: number
+          events_skipped: number
           error: string | null
           status: string
+          duration_ms: number | null
+          triggered_by: string
+          metadata: Record<string, unknown> | null
         }
         Insert: {
           id?: string
@@ -150,8 +154,12 @@ export interface Database {
           finished_at?: string | null
           events_found: number
           events_added: number
+          events_skipped?: number
           error?: string | null
           status: string
+          duration_ms?: number | null
+          triggered_by?: string
+          metadata?: Record<string, unknown> | null
         }
         Update: {
           id?: string
@@ -160,8 +168,12 @@ export interface Database {
           finished_at?: string | null
           events_found?: number
           events_added?: number
+          events_skipped?: number
           error?: string | null
           status?: string
+          duration_ms?: number | null
+          triggered_by?: string
+          metadata?: Record<string, unknown> | null
         }
         Relationships: []
       }
