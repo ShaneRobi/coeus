@@ -49,9 +49,10 @@ const SCRAPERS = {
 
 // Sources with confirmed working URLs and APIs. School scrapers with 404 URLs
 // are kept in SCRAPERS for manual testing but excluded from the daily run.
+// NOTE: 'eventbrite' removed — Eventbrite deprecated their public search API
+// (/v3/events/search/) for third-party apps; the endpoint returns 404.
 export const NIGHTLY_SOURCES = [
   'eventfinda',
-  'eventbrite',
   'luma',
   'nus',
   'ntu',
