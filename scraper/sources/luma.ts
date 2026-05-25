@@ -44,12 +44,26 @@ interface LumaNextEvent {
   geo_address_info?: LumaGeoInfo
 }
 
+interface LumaCentsPrice {
+  cents: number
+  currency?: string
+  is_flexible?: boolean
+}
+
 interface LumaNextEntry {
   api_id: string
   start_at: string
   event?: LumaNextEvent
-  ticket_info?: { is_free?: boolean; price?: number | null; max_price?: number | null }
+  ticket_info?: { is_free?: boolean; price?: number | LumaCentsPrice | null; max_price?: number | LumaCentsPrice | null }
   hosts?: Array<{ name?: string }>
+}
+
+/** Luma returns prices as either a plain number (dollars) or a { cents, currency } object. */
+function parseLumaPrice(value: number | LumaCentsPrice | null | undefined): number | undefined {
+  if (value === null || value === undefined) return undefined
+  if (typeof value === 'number') return value
+  if (typeof value === 'object' && 'cents' in value) return value.cents / 100
+  return undefined
 }
 
 /** Walk an arbitrary JSON value and collect Luma event-wrapper objects. */
@@ -198,8 +212,8 @@ export class LumaScraper extends BaseScraper {
         source: this.source,
         source_id: entry.api_id,
         is_free: ticketInfo?.is_free ?? true,
-        price_min: ticketInfo?.price ?? undefined,
-        price_max: ticketInfo?.max_price ?? undefined,
+        price_min: parseLumaPrice(ticketInfo?.price),
+        price_max: parseLumaPrice(ticketInfo?.max_price),
         tags: ['luma'],
         organiser_name: hostName,
       })
