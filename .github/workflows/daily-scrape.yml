@@ -1,4 +1,5 @@
 name: Daily Scrape
+# scraper is unable to run on vercel's corn schedule. 
 
 on:
   schedule:
