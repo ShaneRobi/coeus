@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci
 
+      - name: Install Playwright browser
+        run: npx playwright install chromium --with-deps
+
       - name: Run nightly scrapers
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
