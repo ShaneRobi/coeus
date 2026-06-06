@@ -13,11 +13,17 @@ export class SIMScraper extends BaseScraper {
       const items = await page.$$eval('[class*="event"], [class*="Event"], .views-row, article, .card', (els) =>
         els.slice(0, 30).map((el) => ({
           title: el.querySelector('h2, h3, h4, [class*="title"], a')?.textContent?.trim() ?? '',
+          // Query date-specific class before falling back to <p> so we don't
+          // accidentally pick up category labels like "<p>Events</p>" that
+          // appear first in the DOM when the card root is itself an <a> element.
           date: el.querySelector('time')?.getAttribute('datetime')
-            ?? el.querySelector('time, [class*="date"], [class*="Date"], p')?.textContent?.trim()
+            ?? el.querySelector('[class*="date"], [class*="Date"]')?.textContent?.trim()
+            ?? el.querySelector('time')?.textContent?.trim()
             ?? '',
           venue: el.querySelector('[class*="venue"], [class*="location"]')?.textContent?.trim() ?? '',
-          url: (el.querySelector('a') as HTMLAnchorElement)?.href ?? '',
+          // SIM cards use <a class="card"> as the root element, so querySelector('a')
+          // finds no nested link. Fall back to the element's own href when applicable.
+          url: (el.tagName === 'A' ? (el as HTMLAnchorElement).href : (el.querySelector('a') as HTMLAnchorElement | null)?.href) ?? '',
           description: el.querySelector('p, [class*="desc"], [class*="summary"]')?.textContent?.trim() ?? '',
         }))
       )
