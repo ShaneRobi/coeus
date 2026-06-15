@@ -9,3 +9,4 @@ alter table public.scraper_runs
 create index if not exists scraper_runs_triggered_by_idx on public.scraper_runs (triggered_by);
 create index if not exists scraper_runs_status_idx       on public.scraper_runs (status);
 create index if not exists scraper_runs_started_at_idx   on public.scraper_runs (started_at desc);
+create index if not exist
