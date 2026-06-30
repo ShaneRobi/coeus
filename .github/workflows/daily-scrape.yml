@@ -1,5 +1,7 @@
 name: Daily Scrape
-# scraper is unable to run on vercel's corn schedule. 
+# Vercel cron runs API-only scrapers (VERCEL_SOURCES: eventfinda, luma, ntu, smu).
+# This workflow runs the full set (NIGHTLY_SOURCES) including Playwright scrapers
+# (nus, sim) that cannot run on Vercel's serverless runtime.
 
 on:
   schedule:
@@ -33,7 +35,6 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEOCODE_API_KEY: ${{ secrets.GEOCODE_API_KEY }}
-          EVENTBRITE_API_KEY: ${{ secrets.EVENTBRITE_API_KEY }}
           LUMA_API_KEY: ${{ secrets.LUMA_API_KEY }}
           EVENTFINDA_USERNAME: ${{ secrets.EVENTFINDA_USERNAME }}
           EVENTFINDA_PASSWORD: ${{ secrets.EVENTFINDA_PASSWORD }}

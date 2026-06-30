@@ -51,6 +51,17 @@ const SCRAPERS = {
 // are kept in SCRAPERS for manual testing but excluded from the daily run.
 // NOTE: 'eventbrite' removed — Eventbrite deprecated their public search API
 // (/v3/events/search/) for third-party apps; the endpoint returns 404.
+
+// API-only scrapers: safe to run on Vercel serverless (no Chromium required).
+export const VERCEL_SOURCES = [
+  'eventfinda',
+  'luma',
+  'ntu',
+  'smu',
+]
+
+// Full nightly set: includes Playwright-based scrapers (nus, sim).
+// Run via GitHub Actions which installs Chromium.
 export const NIGHTLY_SOURCES = [
   'eventfinda',
   'luma',

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { NIGHTLY_SOURCES, runScraper } from '@/scraper/index'
+import { VERCEL_SOURCES, runScraper } from '@/scraper/index'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,10 +13,10 @@ export async function GET(req: NextRequest) {
   for (const key of [
     'NEXT_PUBLIC_SUPABASE_URL',
     'SUPABASE_SERVICE_ROLE_KEY',
-    'EVENTBRITE_API_KEY',
     'LUMA_API_KEY',
     'EVENTFINDA_USERNAME',
     'EVENTFINDA_PASSWORD',
+    'EVENTFINDA_QUERY',
   ]) {
     if (!process.env[key]) missingVars.push(key)
   }
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     duration_ms: number
   }> = {}
 
-  for (const source of NIGHTLY_SOURCES) {
+  for (const source of VERCEL_SOURCES) {
     const sourceStart = Date.now()
 
     const { data: run } = await supabase
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
     started_at: startedAt,
     finished_at: new Date().toISOString(),
     triggered_by: triggeredBy,
-    sources: NIGHTLY_SOURCES,
+    sources: VERCEL_SOURCES,
     totals,
     results,
   })
