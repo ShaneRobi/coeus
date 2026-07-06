@@ -2,7 +2,7 @@
 
 A student event discovery platform for Singapore. Aggregates events from 20+ universities, polytechnics, and event platforms into a single filterable feed.
 
-**Live:** [coeus.sg](https://coeus.sg)
+**Live:** [coeus-psi.vercel.app](https://coeus-psi.vercel.app)
 
 ---
 
@@ -15,7 +15,7 @@ A student event discovery platform for Singapore. Aggregates events from 20+ uni
 - Dark / light theme toggle
 - Admin dashboard for event and user management
 - Admin scraper dashboard — manually trigger any source, view run history, see next automated run
-- Automated daily scraping via Vercel cron (11 PM SGT)
+- Automated scraping via GitHub Actions, 4× daily (5am / 11am / 5pm / 11pm SGT)
 - Telegram bot — listens to groups/channels and auto-saves event posts to the database
 - Geocoding via Nominatim (OpenStreetMap) — coordinates populated automatically per address
 
@@ -75,7 +75,7 @@ EVENTFINDA_QUERY=
 # Telegram bot scraper
 TELEGRAM_BOT_TOKEN=
 
-# Vercel cron auth (set the same value in Vercel env + vercel.json)
+# Auth for manually triggering /api/cron/scrape (optional)
 CRON_SECRET=
 
 # Self-hosted cron overrides (optional)
@@ -97,6 +97,7 @@ Or run manually via the Supabase SQL editor:
 2. `supabase/migrations/002_profile_trigger.sql`
 3. `supabase/migrations/003_roles.sql`
 4. `supabase/migrations/004_require_scraped_event_url.sql`
+5. `supabase/migrations/005_scraper_runs_metadata.sql`
 
 ### Run Locally
 
@@ -108,7 +109,7 @@ npm run dev
 
 ## Scraping
 
-Scrapers use Playwright (headless Chrome) and must be run on a local machine or VPS — they do not run on Vercel.
+Scrapers use Playwright (headless Chrome) and cannot run on Vercel's serverless runtime. Automated scraping runs on **GitHub Actions** (`.github/workflows/daily-scrape.yml`) 4× daily at 03:00 / 09:00 / 15:00 / 21:00 UTC, which installs Chromium and runs the nightly source set. Credentials come from the repository's Actions secrets.
 
 ```bash
 # Scrape all sources
@@ -133,7 +134,7 @@ npm run scrape:telegram
 
 Available source names: `eventbrite`, `luma`, `eventfinda`, `sportsg`, `facebook`, `government`, `nus`, `ntu`, `smu`, `sutd`, `sit`, `suss`, `sim`, `psb`, `sp`, `np`, `tp`, `rp`, `nyp`, `ite`
 
-On Vercel, `/api/cron/scrape` runs **daily at 11:00 PM SGT** (API-based sources only — no Playwright).
+The `/api/cron/scrape` endpoint remains available for manual triggering from the admin dashboard (API-based sources only — no Playwright). There is no Vercel cron; GitHub Actions is the automated scraping engine.
 
 ---
 
@@ -242,6 +243,7 @@ Located at `/admin`, the dashboard has three sections:
 | `002_profile_trigger.sql` | Auto-create profile row on auth signup |
 | `003_roles.sql` | Role enum + RLS policies |
 | `004_require_scraped_event_url.sql` | Constraint: scraped events must have an `external_url`; rejects existing ones that don't |
+| `005_scraper_runs_metadata.sql` | Observability columns on `scraper_runs`: `triggered_by`, `events_skipped`, `duration_ms`, `metadata` |
 
 ---
 
@@ -249,19 +251,13 @@ Located at `/admin`, the dashboard has three sections:
 
 Push to `main` → Vercel auto-deploys.
 
-The Vercel cron (`0 15 * * *` UTC = 11 PM SGT) hits `/api/cron/scrape` and runs all nightly sources automatically. Set `CRON_SECRET` in Vercel env vars to secure the endpoint.
-
-For full nightly scraping with Playwright-based school scrapers, run `npm run scrape:nightly` on your own server:
-
-```cron
-0 23 * * * cd /path/to/coeus && npm run scrape:nightly
-```
+Automated scraping runs on GitHub Actions (`.github/workflows/daily-scrape.yml`) 4× daily — no server required. The workflow needs these repository secrets (Settings → Secrets and variables → Actions): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GEOCODE_API_KEY`, `EVENTFINDA_USERNAME`, `EVENTFINDA_PASSWORD` (plus optional `LUMA_API_KEY`, `EVENTFINDA_QUERY`).
 
 ---
 
 ## Known Limitations
 
-- School scrapers require a local machine with Chromium — they do not run on Vercel
+- School scrapers require Chromium — they run on GitHub Actions (or locally), not on Vercel
 - The Telegram bot must run as a persistent process on a VPS or local machine
 - `/following` and `/saved` pages are UI shells — not yet fully implemented
 - Google OAuth requires additional Supabase + Google Cloud Console setup

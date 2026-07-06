@@ -6,7 +6,7 @@ This document is written for a coding agent picking up this project cold. It cov
 
 ## What the app is
 
-**Coeus** (`coeus.sg`) is a Singapore student event discovery platform. It aggregates events from university websites, Eventbrite, Luma, Eventfinda, and other sources into a single feed. Users can browse events, filter by category, RSVP, save events, and submit their own. The app is targeted at students across Singapore's universities, polytechnics, JCs, and ITEs.
+**Coeus** ([coeus-psi.vercel.app](https://coeus-psi.vercel.app)) is a Singapore student event discovery platform. It aggregates events from university websites, Eventbrite, Luma, Eventfinda, and other sources into a single feed. Users can browse events, filter by category, RSVP, save events, and submit their own. The app is targeted at students across Singapore's universities, polytechnics, JCs, and ITEs.
 
 ---
 
