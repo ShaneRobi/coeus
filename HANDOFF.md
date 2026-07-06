@@ -1,0 +1,84 @@
+# HANDOFF — Coeus
+
+> Read this first. It tells you what the project is, how the infrastructure fits together,
+> what was fixed recently, and where the sharp edges are. Written 2026-07-06.
+
+## Who you're working with
+
+Shane (GitHub: `ShaneRobi`) is **non-technical**. Do fixes end-to-end yourself where possible
+(local credentials, Supabase MCP, GitHub API) and report in plain language. Only hand back
+steps that require his personal logins (e.g. the Vercel dashboard).
+
+## What the app is
+
+**Coeus** is a student event discovery platform for Singapore. It scrapes events from
+university/polytechnic websites and event platforms into one filterable feed. Users can
+browse, RSVP, view a map, and submit events; admins approve submissions and monitor scrapers.
+
+- **Live site:** https://coeus-psi.vercel.app
+  (the `coeus.sg` domain mentioned in older docs was **never registered** — don't trust old references to it)
+- **Stack:** Next.js 14 App Router + TypeScript + Tailwind, Supabase (Postgres + Auth),
+  Playwright/Axios scrapers, Leaflet maps, deployed on Vercel (Hobby plan)
+- More detail: `README.md` (accurate as of 2026-07-06) and `COEUS_BUILD_CONTEXT.md` (initial build history)
+
+## Infrastructure map
+
+| Piece | Where | Notes |
+|---|---|---|
+| Code | github.com/ShaneRobi/coeus, branch `main` | `develop`/`feature-test`/`test` branches are stale — all real work goes to `main` |
+| Database | Supabase project `anbkhizdpgtyjpjbokeu` | Renamed "Coeus" in dashboard 2026-07-06 (was confusingly "Habit Rabbit") |
+| Website hosting | Vercel project **coeus** | Auto-deploys on push to `main`. A **duplicate project `coeus-323b`** also deploys (and fails) on every push — pending deletion by Shane in the Vercel dashboard |
+| Automated scraping | GitHub Actions `.github/workflows/daily-scrape.yml` | Cron `0 3,9,15,21 * * *` UTC (= 11am/5pm/11pm/5am SGT), runs `npm run scrape:nightly` with Chromium |
+| Credentials | Local: `.env.local` in repo root. CI: GitHub Actions repository secrets | Both set and working as of 2026-07-06 |
+
+Nightly scrape sources (all verified working 2026-07-06): `eventfinda`, `luma`, `nus`, `ntu`,
+`smu`, `sim`. The other ~14 scrapers in `scraper/sources/` are kept for manual testing but are
+excluded from the automated run (dead URLs / dead APIs, e.g. Eventbrite's public API was shut down).
+
+Scrape results are logged to the `scraper_runs` table (`triggered_by` column says who ran it)
+and visible on the admin dashboard at `/admin/scrapers`.
+
+## What was broken and fixed on 2026-07-06
+
+The system had scraped nothing since June 6. Three independent causes, all fixed:
+
+1. **GitHub Actions had zero repository secrets** — every scheduled run crashed instantly with
+   `supabaseUrl is required.` Fixed by uploading all secrets from `.env.local`.
+2. **Migration `005_scraper_runs_metadata.sql` was corrupted** (truncated mid-statement in a
+   June 15 commit) **and never applied** — so every `scraper_runs` insert from current code
+   failed silently and the admin dashboard stayed empty. Fixed the file (commit `1843609`) and
+   applied the migration to the live database via Supabase MCP.
+3. **The Vercel cron was invalid and blocking deploys** — `0 */6 * * *` isn't allowed on the
+   Hobby plan, Vercel can't run Playwright anyway, and production had been frozen on ~May 23
+   code for six weeks. Fixed by removing the `crons` block from `vercel.json` (commit `1843609`);
+   the next push deployed successfully and production has been current since.
+
+Also fixed: README/COEUS_BUILD_CONTEXT updated to reflect all of the above (commit `b7dd7c9`).
+
+**Verified end-to-end:** manual workflow run succeeded, and the first fully automatic
+scheduled run succeeded on 2026-07-06 (~3pm SGT). Automation needs no further work.
+
+## Gotchas (will bite you if you don't know)
+
+- **`.env.local` has a space after `=` on some lines.** Parse it with dotenv, never with
+  naive `cut`/`grep` — a leading-space secret caused a 401 once already.
+- **No `gh` CLI installed.** GitHub API access works via the stored git credential:
+  `printf "protocol=https\nhost=github.com\n\n" | git credential fill` → token with
+  `repo`+`workflow` scope. A downloaded gh binary may exist at `/tmp/gh_*/bin/gh` (ephemeral).
+- **Supabase MCP is available** — use it for SQL/migrations instead of asking Shane.
+- **Playwright scrapers can't run on Vercel.** GitHub Actions (which installs Chromium) is the
+  only automated runner. Don't re-add a Vercel cron for scraping.
+- The duplicate Vercel project `coeus-323b` fails on every push — ignore its failure emails/
+  statuses unless Shane has deleted it by now.
+
+## Known remaining work (not started)
+
+- **Optional cleanup:** `lib/firebase.ts` is dead code (nothing imports it; `firebase` and
+  `ics` are unused heavy dependencies). Stale branches `develop`/`feature-test`/`test` could be deleted.
+- `/following` and `/saved` pages are UI shells — not implemented.
+- **Telegram bot** (`scripts/telegram-bot.ts`) has no permanent home — it only works while a
+  machine runs it. Needs a VPS/always-on host if Shane wants it live.
+- Supabase free tier sends only **4 confirmation emails/hour** — needs custom SMTP (e.g.
+  Resend) before real user signups.
+- If Shane buys a real domain later: add it in Vercel → Settings → Domains, then update the
+  URL in `README.md`, `COEUS_BUILD_CONTEXT.md`, and this file.
