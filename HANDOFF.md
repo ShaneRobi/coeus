@@ -71,6 +71,26 @@ scheduled run succeeded on 2026-07-06 (~3pm SGT). Automation needs no further wo
 - The duplicate Vercel project `coeus-323b` fails on every push — ignore its failure emails/
   statuses unless Shane has deleted it by now.
 
+## Coeus feeds another app: Grit-to-Great (added 2026-07-07)
+
+Shane's other project **Grit-to-Great** (youth empowerment platform; local checkout at
+`/Users/shane/Documents/Coder project/Grit-to-Great`) embeds the Coeus events feed:
+
+- Repos: canonical = `Rising-Eagle/Grit-to-Great` (Vercel deploys from its `main`);
+  Shane's fork = `ShaneRobi/Grit-to-Great` (origin). PRs go from the fork to Rising-Eagle.
+- Integration: `src/coeusClient.js` in G2G holds a read-only Supabase client with the
+  Coeus URL + anon key **hardcoded as defaults** (public by design; RLS limits to
+  `status='published'` events). ⚠️ If the Coeus Supabase project or anon key ever changes,
+  update that file too.
+- The Events page is public (landing navbar link) and needs zero env config.
+  Shipped via Rising-Eagle PRs #17 (tab) and #18 (public + zero-config); documented in
+  G2G's `PROJECT_HISTORY.md` addendum (PR #19).
+- **Deployment gotcha learned 2026-07-07:** G2G production (`grit-to-great-tau.vercel.app`)
+  served stale code despite green builds — cause was an active **Vercel Instant Rollback**
+  pinning production to an old deployment. If production looks stale but builds are green,
+  check for a rollback before anything else. Also: the `*-rising-eagles-projects.vercel.app`
+  aliases are behind Vercel Deployment Protection (SSO); only the production domain is public.
+
 ## Known remaining work (not started)
 
 - **Optional cleanup:** `lib/firebase.ts` is dead code (nothing imports it; `firebase` and
