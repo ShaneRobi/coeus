@@ -85,6 +85,11 @@ Shane's other project **Grit-to-Great** (youth empowerment platform; local check
 - The Events page is public (landing navbar link) and needs zero env config.
   Shipped via Rising-Eagle PRs #17 (tab) and #18 (public + zero-config); documented in
   G2G's `PROJECT_HISTORY.md` addendum (PR #19).
+- Further G2G work (all merged as of 2026-07-09): PR #20 converted the whole app to
+  URL-based routing with React Router (every page has its own path, back/forward work,
+  `vercel.json` SPA rewrite added); PR #21 upgraded the Events UI (whole card clickable →
+  detail modal with full description, `btn-pill` "View event" button, calendar date tile
+  on images + highlighted date pill; shared helpers in `src/components/Events/eventUtils.js`).
 - **Deployment gotcha learned 2026-07-07:** G2G production (`grit-to-great-tau.vercel.app`)
   served stale code despite green builds — cause was an active **Vercel Instant Rollback**
   pinning production to an old deployment. If production looks stale but builds are green,
